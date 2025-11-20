@@ -1,0 +1,11 @@
+/* Tüm varsayılan boşlukları sıfırla */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #000; /* Yüklenirken siyah kalsın */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
