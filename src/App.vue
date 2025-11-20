@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 
-// --- TİP TANIMLAMA (TypeScript için) ---
+// --- TİP TANIMLAMA (TypeScript) ---
 interface Marble {
   id: number
   name: string
   image: string
-  desc: string // Yeni: Açıklama alanı
-  price: string // Yeni: Fiyat/Bilgi alanı
+  desc: string
+  price: string
 }
 
 // --- VERİ ---
@@ -15,7 +15,7 @@ const marbles = ref<Marble[]>([
   { 
     id: 1, 
     name: 'Emperador Dark', 
-    image: '/img/mermer1.jpg',
+    image: '/img/mermer1.jpg', // Kendi resimlerini ekledikçe burayı güncelle
     desc: 'İspanya kökenli, kahverengi tonlarında ve altın rengi damarlara sahip lüks bir mermer türüdür.',
     price: 'Premium Koleksiyon'
   },
@@ -65,7 +65,7 @@ const currentAngle = ref(0)
 const isDragging = ref(false)
 const startX = ref(0)
 const startAngle = ref(0)
-const selectedMarble = ref<Marble | null>(null) // Seçili mermer (null ise hiçbiri seçili değil)
+const selectedMarble = ref<Marble | null>(null)
 let animationFrameId: number
 
 // --- MATEMATİK ---
@@ -74,9 +74,9 @@ const radius = computed(() => {
   return Math.round((cardWidth / 2) / Math.tan(Math.PI / count)) + 40 
 })
 
-// --- ETKİLEŞİM (Carousel) ---
+// --- ETKİLEŞİM: SÜRÜKLEME ---
 const startDrag = (event: MouseEvent | TouchEvent) => {
-  if (selectedMarble.value) return // Detay açıksa sürüklemeyi engelle
+  if (selectedMarble.value) return 
   isDragging.value = true
   
   if ('touches' in event) {
@@ -106,9 +106,19 @@ const stopDrag = () => {
   isDragging.value = false
 }
 
-// --- ODAKLANMA MODU FONKSİYONLARI ---
+// --- ETKİLEŞİM: IŞIK EFEKTİ ---
+const handleCardMouseMove = (e: MouseEvent) => {
+  const card = e.currentTarget as HTMLElement
+  const rect = card.getBoundingClientRect()
+  const x = e.clientX - rect.left
+  const y = e.clientY - rect.top
+  
+  card.style.setProperty('--mouse-x', `${x}px`)
+  card.style.setProperty('--mouse-y', `${y}px`)
+}
+
+// --- ODAKLANMA MODU ---
 const openDetail = (marble: Marble) => {
-  // Sürükleme bittiyse aç (yanlışlıkla tıklamayı önlemek için isDragging kontrolü yapılabilir ama şimdilik direkt açalım)
   if (!isDragging.value) {
     selectedMarble.value = marble
   }
@@ -120,7 +130,6 @@ const closeDetail = () => {
 
 // --- ANİMASYON DÖNGÜSÜ ---
 const animate = () => {
-  // Eğer sürüklemiyorsak VE detay açık DEĞİLSE dönmeye devam et
   if (!isDragging.value && !selectedMarble.value) {
     currentAngle.value += autoRotateSpeed
   }
@@ -169,6 +178,8 @@ onUnmounted(() => {
             transform: `rotateY(${index * (360 / marbles.length)}deg) translateZ(${radius}px)`
           }"
           @click="openDetail(marble)"
+          @mousemove="handleCardMouseMove"
+          @mouseleave="(e) => (e.currentTarget as HTMLElement).style.removeProperty('--mouse-x')"
         >
           <img :src="marble.image" :alt="marble.name" class="marble-img" />
           
@@ -217,7 +228,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* --- SAHNE & CAROUSEL (Önceki kodlar) --- */
+/* --- GENEL AYARLAR --- */
 .stage {
   position: relative;
   width: 100vw;
@@ -240,19 +251,24 @@ onUnmounted(() => {
   animation: pulse 10s infinite alternate;
 }
 
+@keyframes pulse {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(1.2); }
+}
+
+/* --- CAROUSEL --- */
 .carousel-container {
   position: relative;
   width: 300px;
   height: 500px;
   transform-style: preserve-3d;
-  transition: filter 0.5s ease, transform 0.5s ease; /* Bulanıklık geçişi */
+  transition: filter 0.5s ease, transform 0.5s ease;
 }
 
-/* Detay açılınca arkadaki carousel bulanıklaşsın ve biraz küçülsün */
 .carousel-container.blurred {
   filter: blur(10px) brightness(0.5);
   transform: scale(0.9);
-  pointer-events: none; /* Arkadakilere tıklanmasın */
+  pointer-events: none;
 }
 
 .carousel {
@@ -262,6 +278,7 @@ onUnmounted(() => {
   transform-style: preserve-3d;
 }
 
+/* --- MERMER KARTI --- */
 .marble-card {
   position: absolute;
   top: 0;
@@ -273,11 +290,11 @@ onUnmounted(() => {
   backface-visibility: hidden;
   -webkit-box-reflect: below 10px linear-gradient(transparent, transparent, rgba(0,0,0,0.4));
   box-shadow: 0 0 20px rgba(0,0,0,0.5);
-  cursor: pointer; /* Tıklanabilir imleci */
+  cursor: pointer;
   transition: transform 0.3s;
+  overflow: hidden; /* Işık taşmasın */
 }
 
-/* Mouse üzerine gelince kart biraz büyüsün */
 .marble-card:hover {
   transform: scale(1.05);
   box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
@@ -287,7 +304,6 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 4px;
   display: block;
 }
 
@@ -298,6 +314,7 @@ onUnmounted(() => {
   width: 100%;
   text-align: center;
   z-index: 2;
+  pointer-events: none;
 }
 .marble-info h3 {
   color: rgba(255, 255, 255, 0.9);
@@ -310,15 +327,25 @@ onUnmounted(() => {
   backdrop-filter: blur(2px);
 }
 
+/* --- IŞIK EFEKTLERİ --- */
 .shine {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.05) 100%);
-  pointer-events: none;
+  inset: 0;
   z-index: 3;
+  background: radial-gradient(
+    circle at var(--mouse-x, 50%) var(--mouse-y, 50%), 
+    rgba(255, 255, 255, 0.4) 0%, 
+    rgba(255, 255, 255, 0.1) 30%, 
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+.marble-card:hover .shine {
+  opacity: 1;
 }
 
 .border-light {
@@ -339,8 +366,7 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-/* --- ODAKLANMA MODU STİLLERİ --- */
-
+/* --- DETAY MODALI --- */
 .detail-overlay {
   position: fixed;
   inset: 0;
@@ -348,7 +374,6 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Arka planı hafif karart ama tamamen kapatma */
   background: rgba(0, 0, 0, 0.2); 
 }
 
@@ -356,11 +381,11 @@ onUnmounted(() => {
   display: flex;
   width: 800px;
   height: 500px;
-  background: rgba(30, 30, 30, 0.8); /* Yarı saydam koyu gri */
-  backdrop-filter: blur(20px); /* Buzlu cam efekti */
+  background: rgba(30, 30, 30, 0.85);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
   overflow: hidden;
   color: white;
 }
@@ -420,7 +445,7 @@ onUnmounted(() => {
   font-size: 2.5rem;
   font-weight: 300;
   margin-bottom: 15px;
-  font-family: 'Times New Roman', serif; /* Daha klasik/şık font */
+  font-family: 'Times New Roman', serif;
 }
 
 .detail-content p {
@@ -456,20 +481,17 @@ onUnmounted(() => {
 }
 .btn-secondary:hover { border-color: white; background: rgba(255,255,255,0.1); }
 
-/* --- GEÇİŞ ANİMASYONLARI (Vue Transitions) --- */
-
-/* Fade (Talimat yazısı için) */
+/* --- VUE GEÇİŞLERİ --- */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
-/* Zoom (Detay kartı için) */
 .zoom-enter-active, .zoom-leave-active { transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
 .zoom-enter-from, .zoom-leave-to { 
   opacity: 0; 
   transform: scale(0.8) translateY(20px); 
 }
 
-/* RESPONSIVE (Mobilde alt alta geçsin) */
+/* RESPONSIVE */
 @media (max-width: 850px) {
   .detail-card {
     flex-direction: column;
