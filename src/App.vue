@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 
-// --- TİP TANIMLAMA (TypeScript) ---
+// --- TİP TANIMLAMA ---
 interface Marble {
   id: number
   name: string
@@ -15,7 +15,7 @@ const marbles = ref<Marble[]>([
   { 
     id: 1, 
     name: 'Emperador Dark', 
-    image: '/img/mermer1.jpg', // Kendi resimlerini ekledikçe burayı güncelle
+    image: '/img/mermer1.jpg', 
     desc: 'İspanya kökenli, kahverengi tonlarında ve altın rengi damarlara sahip lüks bir mermer türüdür.',
     price: 'Premium Koleksiyon'
   },
@@ -56,6 +56,9 @@ const marbles = ref<Marble[]>([
   },
 ])
 
+// --- MENÜ STATE (YENİ) ---
+const isMenuOpen = ref(false) // Menünün açık/kapalı durumu
+
 // --- AYARLAR ---
 const cardWidth = 300 
 const autoRotateSpeed = 0.05
@@ -76,7 +79,7 @@ const radius = computed(() => {
 
 // --- ETKİLEŞİM: SÜRÜKLEME ---
 const startDrag = (event: MouseEvent | TouchEvent) => {
-  if (selectedMarble.value) return 
+  if (selectedMarble.value || isMenuOpen.value) return // Menü açıksa sürüklemeyi engelle
   isDragging.value = true
   
   if ('touches' in event) {
@@ -119,7 +122,7 @@ const handleCardMouseMove = (e: MouseEvent) => {
 
 // --- ODAKLANMA MODU ---
 const openDetail = (marble: Marble) => {
-  if (!isDragging.value) {
+  if (!isDragging.value && !isMenuOpen.value) {
     selectedMarble.value = marble
   }
 }
@@ -162,9 +165,39 @@ onUnmounted(() => {
   >
     <div class="atmosphere"></div>
 
+    <nav class="ui-layer">
+      
+      <div class="brand-logo">
+        MARBLE<span class="light">ART</span>
+        <div class="brand-sub">NATURAL STONE GALLERY</div>
+      </div>
+
+      <div class="menu-container">
+        <button 
+          class="menu-btn" 
+          :class="{ 'open': isMenuOpen }"
+          @click="isMenuOpen = !isMenuOpen"
+        >
+          <span class="line"></span>
+          <span class="line short"></span>
+        </button>
+
+        <Transition name="dropdown">
+          <div v-if="isMenuOpen" class="menu-dropdown">
+            <ul>
+              <li><a href="#">ANASAYFA</a></li>
+              <li><a href="#">KATALOGLAR</a></li>
+              <li><a href="#">HAKKIMIZDA</a></li>
+            </ul>
+          </div>
+        </Transition>
+      </div>
+
+    </nav>
+
     <div 
       class="carousel-container" 
-      :class="{ 'blurred': selectedMarble }"
+      :class="{ 'blurred': selectedMarble || isMenuOpen }" 
     >
       <div 
         class="carousel"
@@ -202,7 +235,6 @@ onUnmounted(() => {
     <Transition name="zoom">
       <div v-if="selectedMarble" class="detail-overlay" @click.self="closeDetail">
         <div class="detail-card">
-          
           <div class="detail-image-box">
             <img :src="selectedMarble.image" :alt="selectedMarble.name" />
             <div class="detail-shine"></div>
@@ -228,7 +260,150 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* --- GENEL AYARLAR --- */
+/* --- UI LAYER --- */
+.ui-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 40px 60px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.brand-logo {
+  font-family: 'Times New Roman', serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));
+}
+.brand-logo .light {
+  font-weight: 300;
+  font-style: italic;
+  margin-left: 5px;
+}
+.brand-sub {
+  font-family: sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 5px;
+  margin-top: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  background: none;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.6);
+  font-weight: 400;
+}
+
+/* --- MENÜ KONTEYNERİ VE BUTONU --- */
+.menu-container {
+  position: relative;
+  pointer-events: auto; /* Menü etkileşimi için şart */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.menu-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  z-index: 60; /* Menü penceresinin üstünde kalsın */
+}
+
+.menu-btn .line {
+  display: block;
+  width: 40px;
+  height: 2px;
+  background-color: rgba(255, 255, 255, 0.9);
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+.menu-btn .line.short { width: 25px; }
+
+.menu-btn:hover .line.short { width: 40px; }
+
+/* Hamburger -> X Dönüşüm Animasyonu */
+.menu-btn.open .line:first-child {
+  transform: rotate(45deg) translate(7px, 7px);
+}
+.menu-btn.open .line.short {
+  width: 40px;
+  transform: rotate(-45deg);
+}
+
+/* --- AÇILIR MENÜ PENCERESİ TASARIMI --- */
+.menu-dropdown {
+  position: absolute;
+  top: 60px; /* Butonun hemen altına */
+  right: 0;
+  width: 220px;
+  background: rgba(20, 5, 5, 0.9); /* Koyu Bordo/Siyah */
+  backdrop-filter: blur(15px); /* Buzlu cam efekti */
+  border: 1px solid rgba(191, 149, 63, 0.3); /* Silik Altın Çerçeve */
+  border-radius: 12px;
+  padding: 20px 0;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.menu-dropdown ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.menu-dropdown li {
+  display: block;
+}
+
+.menu-dropdown a {
+  display: block;
+  padding: 15px 30px;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  font-family: 'Times New Roman', serif;
+  font-size: 0.9rem;
+  letter-spacing: 2px;
+  transition: all 0.3s ease;
+  border-left: 2px solid transparent;
+}
+
+/* Hover Efekti */
+.menu-dropdown a:hover {
+  background: linear-gradient(90deg, rgba(191, 149, 63, 0.1), transparent);
+  color: #fcf6ba; /* Altın rengi */
+  border-left: 2px solid #bf953f;
+  padding-left: 40px; /* Hafif sağa kayma efekti */
+}
+
+/* --- MENÜ ANİMASYONU (Transition) --- */
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-20px); /* Yukarıdan aşağı kaysın */
+}
+
+/* --- DİĞER STİLLER (AYNI) --- */
 .stage {
   position: relative;
   width: 100vw;
@@ -256,7 +431,6 @@ onUnmounted(() => {
   100% { filter: brightness(1.2); }
 }
 
-/* --- CAROUSEL --- */
 .carousel-container {
   position: relative;
   width: 300px;
@@ -278,7 +452,6 @@ onUnmounted(() => {
   transform-style: preserve-3d;
 }
 
-/* --- MERMER KARTI --- */
 .marble-card {
   position: absolute;
   top: 0;
@@ -292,7 +465,7 @@ onUnmounted(() => {
   box-shadow: 0 0 20px rgba(0,0,0,0.5);
   cursor: pointer;
   transition: transform 0.3s;
-  overflow: hidden; /* Işık taşmasın */
+  overflow: hidden;
 }
 
 .marble-card:hover {
@@ -327,7 +500,6 @@ onUnmounted(() => {
   backdrop-filter: blur(2px);
 }
 
-/* --- IŞIK EFEKTLERİ --- */
 .shine {
   position: absolute;
   inset: 0;
@@ -366,7 +538,6 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-/* --- DETAY MODALI --- */
 .detail-overlay {
   position: fixed;
   inset: 0;
@@ -481,7 +652,7 @@ onUnmounted(() => {
 }
 .btn-secondary:hover { border-color: white; background: rgba(255,255,255,0.1); }
 
-/* --- VUE GEÇİŞLERİ --- */
+/* GECİŞLER */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
@@ -491,7 +662,6 @@ onUnmounted(() => {
   transform: scale(0.8) translateY(20px); 
 }
 
-/* RESPONSIVE */
 @media (max-width: 850px) {
   .detail-card {
     flex-direction: column;
@@ -501,5 +671,7 @@ onUnmounted(() => {
   }
   .detail-image-box { flex: none; height: 40%; }
   .detail-content { flex: none; padding: 20px; }
+  .ui-layer { padding: 30px; }
+  .brand-logo { font-size: 1.8rem; }
 }
 </style>
